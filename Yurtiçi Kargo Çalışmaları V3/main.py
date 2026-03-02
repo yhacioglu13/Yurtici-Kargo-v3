@@ -72,7 +72,18 @@ def run_step_4_merge_rpt() -> Path | None:
 def run_step_5_maliyet() -> None:
     """5. Adım: Maliyet kontrolü ve fatura bazlı sonuç excellerini üret."""
     print("\n=== 5) Maliyet kontrolü ve sonuç excelleri ===\n")
-    maliyet_kontrol.run_maliyet_kontrol()
+
+    manual = input(
+        "Dosya yolunu elle seçmek ister misiniz? (E/h): "
+    ).strip().lower()
+    manual_select = manual in {"", "e", "evet", "y", "yes"}
+
+    if manual_select:
+        print("\n📂 Lütfen açılan pencereden bir veya birden fazla Excel dosyası seçin.\n")
+    else:
+        print("\n📄 Otomatik mod: bugünün birleştirilmiş mail Excel'i kullanılacak.\n")
+
+    maliyet_kontrol.run_maliyet_kontrol(manual_select=manual_select)
     print("\n✅ 5. adım tamamlandı.\n")
 
 
@@ -115,3 +126,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
