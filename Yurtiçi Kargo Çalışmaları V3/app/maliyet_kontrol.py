@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import filedialog
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
 from openpyxl.worksheet.page import PageMargins
@@ -14,15 +14,61 @@ from openpyxl.worksheet.page import PageMargins
 from config import MAIL_EXCEL_ROOT, TARIFF_EXCEL_PATH, RESULT_EXCEL_ROOT
 from app.helpers import today_str_en, ensure_folder
 
+def _ask_manual_excel_paths() -> list[Path]:
+    """Kullanıcıdan 5. adım için bir veya birden fazla Excel dosyası seçmesini ister."""
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
 
-def load_base_data() -> pd.DataFrame | None:
-    """Günlük birleştirilmiş mail excellerini okur."""
-    today = today_str_en()
-    base_excel_path = (
-        Path(MAIL_EXCEL_ROOT)
-        / today
-        / f"{today} - Birleştirilmiş Mail Excelleri.xlsx"
+    selected_files = filedialog.askopenfilenames(
+        title="5. Adım için maliyet kontrolünde kullanılacak Excel dosyalarını seçin",
+        filetypes=[("Excel Dosyaları", "*.xlsx *.xls")],
     )
+    root.destroy()
+
+    paths = [Path(file) for file in selected_files]
+    if not paths:
+        print("⚠️ Dosya seçimi yapılmadı.")
+        return []
+
+    print(f"📂 Manuel seçim ile {len(paths)} dosya alındı.")
+    for index, path in enumerate(paths, start=1):
+        print(f"   {index}) {path}")
+    return paths
+
+def _load_and_merge_excels(paths: list[Path]) -> pd.DataFrame | None:
+    """Verilen Excel dosyalarını tek DataFrame içinde birleştirir."""
+    dataframes: list[pd.DataFrame] = []
+
+    for path in paths:
+        if not path.exists():
+            print(f"⚠️ Dosya bulunamadı, atlanıyor: {path}")
+            continue
+
+        try:
+            df = pd.read_excel(path)
+            df["Kaynak Dosya"] = path.name
+            dataframes.append(df)
+            print(f"✅ Okundu: {path}")
+        except Exception as exc:
+            print(f"⚠️ Okunamadı, atlanıyor: {path} ({exc})")
+
+    if not dataframes:
+        print("❌ Geçerli bir Excel dosyası okunamadı.")
+        return None
+
+    return pd.concat(dataframes, ignore_index=True)
+    
+def load_base_data(manual_select: bool = False) -> pd.DataFrame | None:
+    """Günlük birleştirilmiş mail excellerini okur."""
+    if manual_select:
+        selected_paths = _ask_manual_excel_paths()
+        if not selected_paths:
+            return None
+        return _load_and_merge_excels(selected_paths)
+
+    today = today_str_en()
+    base_excel_path = Path(MAIL_EXCEL_ROOT) / today / f"{today} - Birleştirilmiş Mail Excelleri.xlsx"
 
     if not base_excel_path.exists():
         print(f"❌ Hata: Birleştirilmiş Excel bulunamadı! ({base_excel_path})")
@@ -244,9 +290,9 @@ def save_per_invoice(df_filtered: pd.DataFrame) -> None:
     print(f"✅ Tüm fatura bazlı dosyalar başarıyla kaydedildi: {save_folder}")
 
 
-def run_maliyet_kontrol() -> None:
+def run_maliyet_kontrol(manual_select: bool = False) -> None:
     """Maliyet kontrolü yapar, özet tabloyu üretir ve fatura bazlı excelleri kaydeder."""
-    df = load_base_data()
+    df = load_base_data(manual_select=manual_select)
     if df is None:
         return
 
@@ -277,3 +323,4 @@ def run_maliyet_kontrol() -> None:
 
     # Fatura bazlı dosyalar
     save_per_invoice(df_filtered)
+
