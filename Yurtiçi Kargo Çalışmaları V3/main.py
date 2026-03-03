@@ -1,3 +1,5 @@
+from config import DOWNLOADS_FOLDER
+
 """Yurtiçi Kargo Otomasyon Uygulaması - V3
 
 Bu dosya, komut satırından menülü bir arayüz sunar.
@@ -61,7 +63,21 @@ def run_step_3_yurtici_legacy() -> None:
 def run_step_4_merge_rpt() -> Path | None:
     """4. Adım: Mail ile indirilen RPT Excel dosyalarını birleştir."""
     print("\n=== 4) Mail ile gelen RPT Excel dosyaları birleştiriliyor ===\n")
-    merged_path = mail_rpt_birlestir.merge_rpt_excels()
+
+    manual = input(
+        "RPT dosyalarının klasörünü elle seçmek ister misiniz? (E/h): "
+    ).strip().lower()
+    manual_select = manual in {"", "e", "evet", "y", "yes"}
+
+    source_folder = None
+    if manual_select:
+        print("\n📂 Lütfen açılan pencereden RPT dosyalarının olduğu klasörü seçin.\n")
+        source_folder = mail_rpt_birlestir.ask_source_folder(default_folder=DOWNLOADS_FOLDER)
+        if source_folder is None:
+            print("\n⚠️ Klasör seçimi iptal edildi. 4. adım durduruldu.\n")
+            return None
+
+    merged_path = mail_rpt_birlestir.merge_rpt_excels(source_folder=source_folder)
     if merged_path is None:
         print("\n⚠️ Birleştirme yapılamadı.\n")
     else:
@@ -126,4 +142,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
